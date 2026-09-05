@@ -1,0 +1,4 @@
+Rank,Stock A,Stock B,Sector A,Sector B,OLS Beta,OLS Alpha,Correlation,EG p-adj (BH),Johansen Ratio,ADF p-value,Hurst,Half-life (days),Composite Score
+1,DABUR.NS,HINDUNILVR.NS,FMCG,FMCG,0.1801,112.5224,0.4532,0.022584,2.031,1.3e-05,0.337,25.8,1.0
+2,GRASIM.NS,HINDALCO.NS,Cement,Metals,3.4563,170.4926,0.442,0.027766,1.514,3.4e-05,0.3452,35.2,0.6162
+3,HINDALCO.NS,TATASTEEL.NS,Metals,Metals,3.9485,27.679,0.6929,0.041373,1.278,8.2e-05,0.4541,44.0,0.0
