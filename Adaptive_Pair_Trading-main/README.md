@@ -1,5 +1,6 @@
 # Adaptive Pair Trading — Statistical Arbitrage on Indian Equities
 
+
 **Ayush Arora | MQMS2404 | Quantitative Finance Research**
 
 A production-grade statistical arbitrage framework applied to the **NIFTY 100** universe.
