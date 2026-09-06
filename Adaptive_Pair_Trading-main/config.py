@@ -229,8 +229,45 @@ ML_TEST_SIZE = 0.30       # fraction of data held out (time-ordered)
 ML_THRESHOLD = 0.50       # RF probability threshold for trade entry
 
 # ── Kalman Filter (NB07, NB10) ──────────────────────────────────────────────
-KF_DELTA   = 1e-4         # process noise (higher = faster adaptation)
+KF_DELTA   = 1e-4         # process noise (higher = faster adaptation, noisier beta)
 KF_INIT_P  = 10.0         # initial state covariance (diffuse prior)
+
+
+def kalman_hedge(y, x, delta=KF_DELTA, init_p=KF_INIT_P):
+    """Time-varying [alpha_t, beta_t] for ``y ~ alpha + beta * x`` via a Kalman
+    filter — the ONE implementation, imported by NB07 and NB10.
+
+    State follows a random walk; observation noise R is estimated online by
+    exponential smoothing of squared innovations. Returns
+    ``(kf_alpha, kf_beta, kf_spread)`` where ``kf_spread`` is the innovation
+    e_t = y_t - [1, x_t] . theta_{t-1} (a spread built from lagged, time-varying
+    hedge parameters). Larger ``delta`` => faster adaptation and a noisier beta.
+    """
+    import numpy as np
+    import pandas as pd
+    y = pd.Series(y).astype(float)
+    x = pd.Series(x).astype(float)
+    n = len(y)
+    theta = np.zeros((n, 2))
+    P = np.eye(2) * init_p
+    Q = delta / (1 - delta) * np.eye(2)
+    R = 1.0
+    e = np.zeros(n)
+    for t in range(n):
+        H = np.array([[1.0, x.iloc[t]]])
+        theta_pred = theta[t - 1] if t > 0 else np.zeros(2)
+        P_pred = P + Q
+        e[t] = float(y.iloc[t] - H @ theta_pred)
+        S = float(H @ P_pred @ H.T) + R
+        R = 0.95 * R + 0.05 * e[t] ** 2
+        K = P_pred @ H.T / S
+        theta[t] = theta_pred + K.flatten() * e[t]
+        P = (np.eye(2) - K @ H) @ P_pred
+    return (
+        pd.Series(theta[:, 0], index=y.index, name='kf_alpha'),
+        pd.Series(theta[:, 1], index=y.index, name='kf_beta'),
+        pd.Series(e,           index=y.index, name='kf_spread'),
+    )
 
 # ── Walk-Forward Validation (NB09) ─────────────────────────────────────────
 WF_TRAIN_MONTHS = 24      # training window length in months
