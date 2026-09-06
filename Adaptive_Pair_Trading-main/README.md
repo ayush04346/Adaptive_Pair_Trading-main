@@ -74,6 +74,11 @@ BH correction does its job (34 raw hits → 3 after FDR control), but only **3 p
 survive: `DABUR/HINDUNILVR`, `GRASIM/HINDALCO`, `HINDALCO/TATASTEEL` (half-lives
 26 / 35 / 44 d, Hurst 0.34 / 0.35 / 0.45). Two of the three share the HINDALCO leg.
 
+The `hurst_exponent` function is the **variance-of-lagged-differences** (structure-function)
+estimator — it regresses the log dispersion of the lag-τ differences `xₜ₊τ − xₜ` on `log τ`
+and rescales the slope to H — not R/S analysis, despite the docstring's label. The maths is
+a valid Hurst estimator; only the name is wrong.
+
 ### NB09 — walk-forward out-of-sample validation
 
 16 rolling windows per pair (24-month train / 6-month test, 2017–2024). P&L is a
@@ -186,6 +191,31 @@ Beyond the textbook fixes, three passes of structural corrections:
 - **NB00–NB06 not re-run in the correction passes.** NB03/NB06 still compute their
   Z-score / P&L inline (NB06 still on one-way `TC`); NB09/NB10/NB07 are the corrected
   reference. NB05's ML filter has AUC ≈ 0.61 (RF) / 0.65 (Logit) — weak.
+- **Pair-selection look-ahead.** NB08 selects pairs with cointegration tests run over
+  the full 2015–2024 sample, and NB09 then validates on walk-forward windows inside
+  that same sample. The walk-forward is out-of-sample for the strategy parameters
+  (β, Z-score, entry timing) but not for pair selection: the three pairs were chosen
+  because they were cointegrated over exactly the period being tested. Removing this
+  bias means re-running the universe scan at each window's training cutoff using only
+  data available then. This is the largest remaining bias in the project and would
+  likely push the measured Sharpe further toward zero.
+- **FDR correction applied after a data-dependent screen.** The correlation filter runs
+  first on the full sample and Benjamini–Hochberg is applied only to its 226 survivors,
+  not to all 3,081 candidates. Screening on the same data that produces the p-values
+  weakens the FDR guarantee, so "3 pairs survive FDR control" is optimistic. A clean
+  version would carry all 3,081 tests into the BH procedure, or split the screen and
+  the test onto different samples.
+- **One-sided correlation filter.** The screen keeps only `r ≥ 0.40`. Cointegration
+  does not require positive return correlation and a negative hedge ratio is perfectly
+  tradeable, so roughly half the candidate space is excluded without justification.
+  Fixing it means filtering on `|r|` (or dropping the correlation pre-screen and paying
+  for the extra cointegration tests).
+- **Engle–Granger asymmetry.** `coint(A, B)` and `coint(B, A)` return different
+  p-values, and the pair ordering comes from `itertools.combinations`, so which
+  direction is tested is arbitrary. The Johansen filter mitigates this but does not
+  remove the direction dependence from the p-values that enter the BH correction.
+  Testing both directions and taking the min (with a correspondingly larger correction)
+  would make the ranking order-invariant.
 - **Costs are a flat bps parameter.** No market impact, no per-name SLB borrow, no lot
   sizes. 30–60 bps is the intended judging range; 10 bps is optimistic.
 - **Single data vintage** (`data/prices.csv`, yfinance, adjusted, 2015-01 → 2024-12).
